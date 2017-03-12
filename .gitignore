@@ -1,0 +1,9 @@
+*.sqlite3 
+*.pyc 
+bin
+obj
+_eric6project
+*.e4p
+*.prj
+venv
+*.komodoproject
