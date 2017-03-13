@@ -15,9 +15,19 @@ namespace ApplicationServer
             get { return _fileName; }
             set { _fileName = value; }
         }
+        private static Boolean turnOff;
+        public static Boolean TurnOff
+        {
+            get { return turnOff; }
+            set { turnOff = value; }
+        }
 
         public static void Initialize(string fileName)
         {
+            if (turnOff)
+            {
+                return;
+            }
             if (string.IsNullOrEmpty(fileName))
             {
                 throw new Exception("FileName should not be empty!");
@@ -84,11 +94,19 @@ namespace ApplicationServer
 
         public static void WriteLine(string content)
         {
+            if (turnOff)
+            {
+                return;
+            }
             Write(content, Environment.NewLine);
         }
 
         public static void Write(string content)
         {
+            if (turnOff)
+            {
+                return;
+            }
             Write(content, "");
         }
     }

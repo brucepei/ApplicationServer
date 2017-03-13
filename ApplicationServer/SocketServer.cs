@@ -119,7 +119,7 @@ namespace ApplicationServer
                     Logging.WriteLine(remoteAddr + ": Received:" + cmd + "!!!");
 
                     var app = new Application(cmd);
-                    cmdResult = app.Run(3);
+                    cmdResult = app.Run(60);
                     var result = String.Format("cmd {0} done with stdout: '{1}', stderr: '{2}'!\n", cmd, cmdResult.Output, cmdResult.Error);
                     //Logging.WriteLine(result);
                     byte[] msg = Encoding.UTF8.GetBytes(result);
