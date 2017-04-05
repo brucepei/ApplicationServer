@@ -3,6 +3,7 @@
 *.suo
 bin
 obj
+AS_Perl\log
 _eric6project
 *.e4p
 *.prj
