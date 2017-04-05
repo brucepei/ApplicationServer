@@ -136,9 +136,13 @@ namespace ApplicationServer
         private void SplitCommand(Boolean shellExecute=false)
         {
             command = command.Trim();
-            if (command.StartsWith("\"") && command.EndsWith("\""))
+            string executableName;
+            String[] args = CommandLineToArgs(command, out executableName);
+            if (command.StartsWith("\"") && command.EndsWith("\"") && executableName == command.Substring(1, command.Length-2))
             {
                 command = command.Trim('"').Trim();
+                Logging.WriteLine("Command with doublequote, so remove them, and parse again!");
+                args = CommandLineToArgs(executableName, out executableName);
             }
             if (shellExecute)
             {
@@ -147,8 +151,6 @@ namespace ApplicationServer
             }
             else
             {
-                string executableName;
-                String[] args = CommandLineToArgs(command, out executableName);
                 Logging.WriteLine(String.Format("Parse command '{0}': exename: {1}, args: {2}", command, executableName, args));
                 if (String.IsNullOrWhiteSpace(executableName))
                 {
