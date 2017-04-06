@@ -207,7 +207,7 @@ sub on_client_command {
 
 sub on_client_command_done {
     my ( $self, $heap, $result ) = @_[OBJECT, HEAP, ARG0];
-    $heap->{rw}->put( "Command done: '$result'!" );
+    $heap->{rw}->put( $result );
     $heap->{ShutDown} = 1;
 }
 
