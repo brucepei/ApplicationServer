@@ -86,7 +86,7 @@ sub create {
         $self->{$_} = $config->{$_};
     }
     POE::Component::Pool::Thread->new(
-        MinFree       => 0,
+        MinFree       => 2,
         MaxFree       => 5,
         MaxThreads    => 15,
         StartThreads  => 2,

@@ -21,11 +21,12 @@ use Fcntl;
 # Circumvent warnings...
 BEGIN { run POE::Kernel }
 
-*VERSION = \0.017; #lpei: 0.016: fix a bug based on 0.015: poe kernel stop in thread
-                   #lpei: 0.017: fix a bug: pipe timeout 120s
+*VERSION = \0.018; #lpei: 0.016: fix a bug based on 0.015: poe kernel stop in thread
+                   #lpei: 0.017: fix a bug: pipe timeout 120s: hello alive
+                   #lpei: 0.018: fix a bug: pipe timeout 120s: if no thread to detect alive, reload pipe once failed
 
 use constant DEBUG => 1;
-use constant ALIVE_PIPE_INTERVAL => 10;
+use constant ALIVE_PIPE_INTERVAL => 60;
 
 sub new {
     die __PACKAGE__, "->new() requires a balanced list" unless @_ % 2;
@@ -34,10 +35,8 @@ sub new {
     
     $opt{inline_states} ||= {};
     $opt{StartThreads}  ||= 0;
-    $opt{StartThreads}  = 1 if $opt{StartThreads} < 1;    #lpei: must >= 1, or pipe will timeout 120s
     $opt{MinFree}       ||= 2;
     $opt{MaxFree}       ||= 10; 
-    $opt{MaxFree}  = 1 if $opt{MaxFree} < 1;    #lpei: must >= 1, or pipe will timeout 120s
 
     POE::Session->create    
     ( inline_states => {
@@ -51,7 +50,7 @@ sub new {
             $heap->{queue} = [];
 
             # my ($pipe_in, $pipe_out) = POE::Pipe::OneWay->new;
-            my ($pipe_in, $pipe_out) = pipely(debug => 1);
+            my ($pipe_in, $pipe_out) = pipely(debug => 1); #lpei: use IO::Pipely, since POE::Pipe has been deprecated
             $heap->{pipe_out} = $pipe_out;
             $kernel->delay(-alive_pipe => ALIVE_PIPE_INTERVAL);
             
@@ -71,7 +70,7 @@ sub new {
             goto $opt{inline_states}{_start} if $opt{inline_states}{_start};
         },
         
-        #lpei: fix bug: pipe_out forcily close after 120 seconds
+        #lpei: fix bug: pipe_out forcily close after 120 seconds: hello alive
         -alive_pipe => sub {
             my ($kernel, $heap) = @_[ KERNEL, HEAP ];
             my $find_free_thread = 0;
@@ -88,6 +87,45 @@ sub new {
             if (!$find_free_thread && defined($force_tid)) {
                 $heap->{thread}{$force_tid}{iqueue}->enqueue("alive");
                 DEBUG && warn "start to detect pipe alive at force thread $force_tid...";
+            }
+            $kernel->delay(-alive_pipe => ALIVE_PIPE_INTERVAL);
+        },
+        
+        #lpei: fix bug: pipe_out forcily close after 120 seconds, reload pipe
+         -reload_pipe => sub {
+            my ($kernel, $session, $heap) = @_[ KERNEL, SESSION, HEAP ];
+            my @time = localtime(time);
+            DEBUG && warn "[$time[2]:$time[1]:$time[0]] PIPE failed: 1. joining all threads";
+            for my $tid (keys %{ $heap->{thread} }) {
+                my $tdsc = $heap->{thread}{$tid};
+                $tdsc->{iqueue}->enqueue("last");
+                $tdsc->{thread}->join;
+                DEBUG && warn "PIPE failed: 1.1 thread $tid joined";
+                unless ($kernel->refcount_decrement($session->ID, "thread")) {
+                    DEBUG && warn "PIPE failed: 2. delete pipe wheel";
+                    delete $heap->{wheel};
+                }
+                delete $tdsc->{$_} for keys %$tdsc;
+            }
+            $heap->{thread} = {};
+            DEBUG && warn "PIPE failed: 3. create new pipe";
+            my ($pipe_in, $pipe_out) = pipely(debug => 1);
+            unless( defined $pipe_in and defined $pipe_out ) {
+                DEBUG && warn "Unable to recreate pipe, and retry later!";
+                $kernel->delay('-reload_pipe' => 1);
+                return;
+            }
+            $heap->{pipe_out} = $pipe_out;
+            DEBUG && warn "PIPE failed: 4. create new pipe wheel";
+            $heap->{wheel} = POE::Wheel::ReadWrite->new
+                ( Handle      => $pipe_in,
+                  InputEvent  => "-thread_talkback",
+                  ErrorEvent  => "-thread_talkerror",
+                );
+            @time = localtime(time);
+            DEBUG && warn "[$time[2]:$time[1]:$time[0]] PIPE failed: 5. create new prespawn threads";
+            for (1 .. $opt{StartThreads}) {
+                $kernel->call($_[SESSION], "-spawn_thread");
             }
         },
         
@@ -109,7 +147,8 @@ sub new {
 
         -thread_talkerror => sub { 
             my ($kernel, $heap) = @_[ KERNEL, HEAP ];
-            die "Error: type=", $_[ARG0], ", msg=", $_[ARG2];
+            warn "PIPE failed: type=", $_[ARG0], ", msg=", $_[ARG2];
+            $kernel->yield('-reload_pipe');
         },
 
         -thread_talkback => sub {
@@ -128,8 +167,8 @@ sub new {
                     $kernel->yield(-collect_garbage => $tid);
                 }
                 elsif ($command eq "alive") {#lpei: fix bug: pipe_out forcily close after 120 seconds
-                    $kernel->delay(-alive_pipe => ALIVE_PIPE_INTERVAL);
                     DEBUG && warn "confirm pipe alive!";
+                    $kernel->delay(-alive_pipe => ALIVE_PIPE_INTERVAL); #lpei: reset alive timer, to avoid alive so quickly
                 }
             }
         },
@@ -180,6 +219,7 @@ sub new {
             elsif (@free > $opt{MaxFree}) {
                 (shift @free)->{iqueue}->enqueue("last");
             }
+            $kernel->delay(-alive_pipe => ALIVE_PIPE_INTERVAL); #lpei: reset alive timer, to avoid alive so quickly
         },
 
         -spawn_thread => sub {
