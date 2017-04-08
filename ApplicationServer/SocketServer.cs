@@ -38,7 +38,7 @@ namespace ApplicationServer
         public void Start()
         {
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            var address = IPAddress.Parse("10.231.199.203");
+            var address = IPAddress.Any;
             var ip_port_entry = new IPEndPoint(address, listenPort);
             try
             {
