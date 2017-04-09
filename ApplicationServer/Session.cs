@@ -55,9 +55,9 @@ namespace ExpectNet
         /// <param name="handler">action to be performed</param>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
-        public void Expect(string query, ExpectedHandler handler)
+        public void Expect(string query, ExpectedHandler handler, Int32 timeout = 0)
         {
-            Expect(query, (s) => handler());
+            Expect(query, (s) => handler(), timeout);
         }
 
         /// <summary>
@@ -69,9 +69,12 @@ namespace ExpectNet
         /// <param name="handler">action to be performed, it accepts session output as ana argument</param>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
-        public void Expect(string query, ExpectedHandlerWithOutput handler)
+        public void Expect(string query, ExpectedHandlerWithOutput handler, Int32 timeout=0)
         {
             var tokenSource = new CancellationTokenSource();
+            if (timeout <= 0) {
+                timeout = _timeout;
+            }
             CancellationToken ct = tokenSource.Token;
             _output = "";
             bool expectedQueryFound = false;
@@ -83,7 +86,7 @@ namespace ExpectNet
                     expectedQueryFound = _output.Contains(query);
                 }
             }, ct);
-            if (task.Wait(_timeout, ct))
+            if (task.Wait(timeout, ct))
             {
                 handler(_output);
             }
