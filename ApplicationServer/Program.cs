@@ -16,6 +16,38 @@ namespace ApplicationServer
             Main_expect(args);
         }
 
+        static String Send(Session sess, String command, Int32 timeout_seconds, String regex_string=null, Boolean needCRLF=true)
+        {
+            var result = String.Empty;
+            timeout_seconds = timeout_seconds * 1000;
+            if (needCRLF)
+            {
+                sess.Send(command + "\n");
+            }
+            else
+            {
+                sess.Send(command);
+            }
+            Regex regex = null;
+            if (String.IsNullOrEmpty(regex_string))
+            {
+                regex = new Regex(@"[a-zA-Z]:[^>\n]*?>");
+            }
+            else
+            {
+                regex = new Regex(regex_string);
+            }
+            try
+            {
+                sess.Expect(regex, s => { result = s; }, timeout_seconds);
+            }
+            catch (System.TimeoutException)
+            {
+                Console.WriteLine("Timeout:" + command);
+            }
+            return result;
+        }
+
         static void Main_sock(string[] args)
         {
             Logging.TurnOff = false;
@@ -53,54 +85,34 @@ namespace ApplicationServer
         {
             try
             {
-                Console.WriteLine("ExampleApp");
+                Console.WriteLine("Startup CMD");
                 Session spawn = Expect.Spawn(new ProcessSpawnable("cmd.exe"));
                 spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("cmd: got: " + s + "!"));
-                spawn.Send("net user\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("net user found:" + s + "!"));
-                spawn.Timeout = 5000;
-                spawn.Send("ping 127.0.0.1 -n 3\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("ping found:" + s + "!"));
-                spawn.Send("cd c:\\Users\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("cd found:" + s + "!"));
-                spawn.Send("dir c:\\\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), (s) => Console.WriteLine("dir c: found: " + s + "!"));
-                spawn.Send("asdsdf\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), (s) => Console.WriteLine("asdsdf found: " + s + "!"));
-                spawn.Send("ping 127.0.0.1 -n 10\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("ping found:" + s + "!"), 15000);
-                spawn.Send("c:\n");
+                var result = Send(spawn, "ping 127.0.0.1 -n 2", 5);
+                Console.WriteLine("result: " + result + "!END!");
+                //spawn.Send("net user\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("net user found:" + s + "!"));
+                //spawn.Timeout = 5000;
+                //spawn.Send("ping 127.0.0.1 -n 3\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("ping found:" + s + "!"));
+                //spawn.Send("cd c:\\Users\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("cd found:" + s + "!"));
+                //spawn.Send("dir c:\\\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), (s) => Console.WriteLine("dir c: found: " + s + "!"));
+                //spawn.Send("asdsdf\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), (s) => Console.WriteLine("asdsdf found: " + s + "!"));
+                //spawn.Send("ping 127.0.0.1 -n 10\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("ping found:" + s + "!"), 15000);
+                //spawn.Send("c:\n");
+
                 //spawn.Expect(@">", s => spawn.Send("cd Users\n"));
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), (s) => Console.WriteLine("c: found: " + s + "!"));
-                spawn.Send("whoami\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("whoami found:" + s + "!"));
-                spawn.Send("cd c:\\Users\n");
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("cd found:" + s + "!"));
 
-                // Expect timeouts examples
-                spawn.Send("ping 8.8.8.8\n");
-                try
-                {
-                    //spawn.Expect("8.8.8.8 的 Ping 统计信息", s => Console.WriteLine(s), 6000);
-                    spawn.Expect("Ping statistics", s => Console.WriteLine(s));
-                }
-                catch (System.TimeoutException)
-                {
-                    Console.WriteLine("Timeout 8.8.8.8!");
-                }
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("clear buffer1 found:" + s + "!"));
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), (s) => Console.WriteLine("c: found: " + s + "!"));
+                //spawn.Send("whoami\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("whoami found:" + s + "!"));
+                //spawn.Send("cd c:\\Users\n");
+                //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("cd found:" + s + "!"));
 
-                spawn.Send("ping 8.8.4.4\n");
-                try
-                {
-                    //spawn.Expect("8.8.4.4 的 Ping 统计信息", s => Console.WriteLine(s), 6000);
-                    spawn.Expect("Ping statistics for 8.8.4.4", s => Console.WriteLine(s));
-                }
-                catch (System.TimeoutException)
-                {
-                    Console.WriteLine("Timeout 8.8.4.4!");
-                }
-                spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("clear buffer2 found:" + s + "!"), 15000);
             }
             catch (Exception e)
             {
