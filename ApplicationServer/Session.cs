@@ -57,7 +57,22 @@ namespace ExpectNet
         /// amount of time</exception>
         public void Expect(string query, ExpectedHandler handler, Int32 timeout = 0)
         {
-            Expect(query, (s) => handler(), timeout);
+            Expect(new StringContainsMatcher(query), (s) => handler(), timeout);
+        }
+
+        public void Expect(string query, ExpectedHandlerWithOutput handler, Int32 timeout = 0)
+        {
+            Expect(new StringContainsMatcher(query), (s) => handler(s), timeout);
+        }
+
+        public void Expect(Regex regex, ExpectedHandler handler, Int32 timeout = 0)
+        {
+            Expect(new RegexMatcher(regex), (s) => handler(), timeout);
+        }
+
+        public void Expect(Regex regex, ExpectedHandlerWithOutput handler, Int32 timeout = 0)
+        {
+            Expect(new RegexMatcher(regex), (s) => handler(s), timeout);
         }
 
         /// <summary>
@@ -69,7 +84,7 @@ namespace ExpectNet
         /// <param name="handler">action to be performed, it accepts session output as ana argument</param>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
-        public void Expect(string query, ExpectedHandlerWithOutput handler, Int32 timeout=0)
+        private void Expect(IMatcher matcher, ExpectedHandlerWithOutput handler, Int32 timeout=0)
         {
             var tokenSource = new CancellationTokenSource();
             if (timeout <= 0) {
@@ -83,7 +98,7 @@ namespace ExpectNet
                 while (!ct.IsCancellationRequested && !expectedQueryFound)
                 {
                     _output += _spawnable.Read();
-                    expectedQueryFound = _output.Contains(query);
+                    expectedQueryFound = matcher.IsMatch(_output);
                 }
             }, ct);
             if (task.Wait(timeout, ct))
@@ -127,7 +142,22 @@ namespace ExpectNet
         /// amount of time</exception>
         public async Task ExpectAsync(string query, ExpectedHandler handler)
         {
-            await ExpectAsync(query, s => handler()).ConfigureAwait(false);
+            await ExpectAsync(new StringContainsMatcher(query), s => handler()).ConfigureAwait(false);
+        }
+
+        public async Task ExpectAsync(string query, ExpectedHandlerWithOutput handler)
+        {
+            await ExpectAsync(new StringContainsMatcher(query), s => handler(s)).ConfigureAwait(false);
+        }
+
+        public async Task ExpectAsync(Regex regex, ExpectedHandler handler)
+        {
+            await ExpectAsync(new RegexMatcher(regex), s => handler()).ConfigureAwait(false);
+        }
+
+        public async Task ExpectAsync(Regex regex, ExpectedHandlerWithOutput handler)
+        {
+            await ExpectAsync(new RegexMatcher(regex), s => handler(s)).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -139,7 +169,7 @@ namespace ExpectNet
         /// <param name="handler">action to be performed, it accepts session output as ana argument</param>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
-        public async Task ExpectAsync(string query, ExpectedHandlerWithOutput handler)
+        private async Task ExpectAsync(IMatcher matcher, ExpectedHandlerWithOutput handler)
         {
             Task timeoutTask = null;
             if (_timeout > 0)
@@ -161,7 +191,7 @@ namespace ExpectNet
                 if (task == any)
                 {
                     _output += await task.ConfigureAwait(false);
-                    expectedQueryFound = _output.Contains(query);
+                    expectedQueryFound = matcher.IsMatch(_output);
                     if (expectedQueryFound)
                     {
                         handler(_output);
