@@ -14,6 +14,7 @@ namespace ExpectNet
         StreamReader StandardError { get; }
         StreamWriter StandardInput { get; }
 
+        Process Process { get; }
         void Start();
     }
 }

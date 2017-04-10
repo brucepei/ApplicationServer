@@ -18,8 +18,8 @@ namespace ExpectNet
         private Task<string> _errorRead = null;
         private Task<string> _stdRead = null;
 
-        internal IProcess Process { get { return _process; } }
-
+        //internal IProcess Process { get { return _process; } }
+        public Process Process { get { return _process.Process; } }
         /// <summary>
         /// Initializes new ProcessSpawnable instance to handle shell command process
         /// </summary>

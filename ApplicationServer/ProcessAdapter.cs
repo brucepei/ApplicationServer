@@ -34,5 +34,10 @@ namespace ExpectNet
         {
             process.Start();
         }
+
+        public System.Diagnostics.Process Process
+        {
+            get { return process; }
+        }
     }
 }

@@ -7,6 +7,7 @@ namespace ExpectNet
 {
     public interface ISpawnable
     {
+        System.Diagnostics.Process Process { get; }
         void Init();
 
         void Write(string command);

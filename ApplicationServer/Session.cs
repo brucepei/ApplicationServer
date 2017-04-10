@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -32,6 +33,8 @@ namespace ExpectNet
             _spawnable = spawnable;
         }
 
+        public Process Process { get { return _spawnable.Process;} }
+
         /// <summary>
         /// Sends characters to the session.
         /// </summary>
@@ -45,6 +48,29 @@ namespace ExpectNet
         public void Send(string command)
         {
             _spawnable.Write(command);
+        }
+
+        public void ClearBuffer(ExpectedHandlerWithOutput handler, Int32 timeout)
+        {
+            var tokenSource = new CancellationTokenSource();
+            CancellationToken ct = tokenSource.Token;
+            _output = "";
+            Task task = Task.Factory.StartNew(() =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    _output += _spawnable.Read();
+                }
+            }, ct);
+            if (task.Wait(timeout, ct))
+            {
+                handler(_output);
+            }
+            else
+            {
+                tokenSource.Cancel();
+                handler(_output);
+            }
         }
 
         /// <summary>
