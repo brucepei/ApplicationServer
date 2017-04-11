@@ -17,12 +17,6 @@ namespace ApplicationServer
             Main_expect(args);
         }
 
-        static void SpawnCmd()
-        {
-            spawn = Expect.Spawn(new ProcessSpawnable("cmd.exe"));
-            Console.WriteLine("Start CMD with pid: " + spawn.Process.Id);
-            spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("CMD started with banner:" + s + "!"));
-        }
         static String Send(Session sess, String command, Int32 timeout_seconds, String regex_string=null, Boolean needCRLF=true)
         {
             var result = String.Empty;
@@ -53,15 +47,13 @@ namespace ApplicationServer
                 Console.WriteLine("Timeout:" + command);
                 if (sess.Process.HasExited)
                 {
-                    Console.WriteLine(String.Format("Session process has exited at {0} with error code {1}", sess.Process.ExitTime.ToString(), sess.Process.ExitCode));
-                    SpawnCmd();
+                    sess.Reset();
                 }
                 else
                 {
                     sess.Send("\n");
                     sess.Send("\n");
-                    String buff = String.Empty;
-                    sess.ClearBuffer(s => { buff = s; }, 5000);
+                    String buff = sess.ClearBuffer(5000);
                     Console.WriteLine("Clear buffer: " + buff + "!BUFFER!");
                 }
             }
@@ -105,7 +97,9 @@ namespace ApplicationServer
         {
             try
             {
-                SpawnCmd();
+                spawn = Expect.Spawn(new ProcessSpawnable("cmd.exe"));
+                string banner = spawn.ClearBuffer(1000);
+                Console.WriteLine("Cmd started with banner:\n" + banner + "!END!");
                 var result = Send(spawn, "ping 127.0.0.1 -n 3", 1);
                 Console.WriteLine("result: " + result + "!END!");
                 result = Send(spawn, "ping 127.0.0.1 -n 2", 10);

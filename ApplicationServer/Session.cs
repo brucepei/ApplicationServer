@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -35,6 +36,43 @@ namespace ExpectNet
 
         public Process Process { get { return _spawnable.Process;} }
 
+        public Boolean Reset()
+        {
+            var result = false;
+            if (Process.HasExited)
+            {
+                Console.WriteLine(String.Format("Session process {0} has already exited at {1} with error code {2}!", Process.StartInfo.FileName, Process.ExitTime.ToString(), Process.ExitCode));
+            }
+            else
+            {
+                try
+                {
+                    Process.Kill();
+                }
+                catch (Win32Exception wexp)
+                {
+                    Console.WriteLine(String.Format("Session process {0} failed to be killed: {1}!", Process.StartInfo.FileName, wexp));
+                    return result;
+                }
+                catch (NotSupportedException nexp)
+                {
+                    Console.WriteLine(String.Format("Session process {0} don't support 'kill': {1}!", Process.StartInfo.FileName, nexp));
+                    return result;
+                }
+                catch (InvalidOperationException iexp)
+                {
+                    Console.WriteLine(String.Format("Session process {0} is not existed or already exited: {1}!", Process.StartInfo.FileName, iexp));
+                }
+            }
+            Process p = new Process();
+            p.StartInfo.FileName = Process.StartInfo.FileName;
+            p.StartInfo.Arguments = Process.StartInfo.Arguments;
+            _spawnable = new ProcessSpawnable(p);
+            _spawnable.Init();
+            result = true;
+            return result;
+        }
+
         /// <summary>
         /// Sends characters to the session.
         /// </summary>
@@ -50,7 +88,7 @@ namespace ExpectNet
             _spawnable.Write(command);
         }
 
-        public void ClearBuffer(ExpectedHandlerWithOutput handler, Int32 timeout)
+        public string ClearBuffer(Int32 timeout)
         {
             var tokenSource = new CancellationTokenSource();
             CancellationToken ct = tokenSource.Token;
@@ -62,15 +100,11 @@ namespace ExpectNet
                     _output += _spawnable.Read();
                 }
             }, ct);
-            if (task.Wait(timeout, ct))
-            {
-                handler(_output);
-            }
-            else
+            if (!task.Wait(timeout, ct))
             {
                 tokenSource.Cancel();
-                handler(_output);
             }
+            return _output;
         }
 
         /// <summary>

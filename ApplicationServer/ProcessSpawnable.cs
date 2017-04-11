@@ -17,7 +17,6 @@ namespace ExpectNet
         private IProcess _process;
         private Task<string> _errorRead = null;
         private Task<string> _stdRead = null;
-
         //internal IProcess Process { get { return _process; } }
         public Process Process { get { return _process.Process; } }
         /// <summary>
