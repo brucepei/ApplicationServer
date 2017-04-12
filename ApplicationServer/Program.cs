@@ -11,7 +11,6 @@ namespace ApplicationServer
     class Program
     {
         static Int32 defaultPort = 16789;
-        static Session spawn = null;
         static void Main(string[] args)
         {
             Main_expect(args);
@@ -54,14 +53,14 @@ namespace ApplicationServer
         {
             try
             {
-                spawn = Expect.Spawn(new ProcessSpawnable("cmd.exe"));
-                string banner = spawn.ClearBuffer(1000);
-                Console.WriteLine("Cmd started with banner:\n" + banner + "!END!");
-                var result = spawn.Send("ping 127.0.0.1 -n 3", 1);
+                var sess = Expect.Spawn(new ProcessSpawnable("cmd.exe"), new Regex(@"[a-zA-Z]:[^>\n]*?>"));
+                string banner = sess.ClearBuffer(1000);
+                Console.WriteLine("Cmd started with banner:\n" + banner + "!BANNER_END!");
+                var result = sess.Cmd("ping 127.0.0.1 -n 3", 4);
                 Console.WriteLine("result: " + result + "!END!");
-                result = spawn.Send("ping 127.0.0.1 -n 2", 10);
+                result = sess.Cmd("ping 127.0.0.1 -n 2", 1);
                 Console.WriteLine("result: " + result + "!END!");
-                result = spawn.Send("ping 127.0.0.1 -n 2", 1);
+                result = sess.Cmd("ping 127.0.0.1 -n 4", 1);
                 Console.WriteLine("result: " + result + "!END!");
                 //spawn.Send("net user\n");
                 //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("net user found:" + s + "!"));

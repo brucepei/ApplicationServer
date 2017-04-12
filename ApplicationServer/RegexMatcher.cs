@@ -8,6 +8,30 @@ namespace ExpectNet
     public class RegexMatcher : IMatcher
     {
         private System.Text.RegularExpressions.Regex regex;
+        private string preMatchedString;
+        private string matchedString;
+        private string postMatchedString;
+        public string PreMatchedString
+        {
+            get
+            {
+                return preMatchedString;
+            }
+        }
+        public string MatchedString
+        {
+            get
+            {
+                return matchedString;
+            }
+        }
+        public string PostMatchedString
+        {
+            get
+            {
+                return postMatchedString;
+            }
+        }
 
         public RegexMatcher(System.Text.RegularExpressions.Regex regex)
         {
@@ -20,7 +44,16 @@ namespace ExpectNet
 
         public bool IsMatch(string text)
         {
-            return regex.IsMatch(text);
+            var result = false;
+            var match = regex.Match(text);
+            if (match.Success)
+            {
+                preMatchedString = text.Substring(0, match.Index);
+                postMatchedString = text.Substring(match.Index + match.Groups[0].Value.Length);
+                matchedString = match.Groups[0].Value;
+                result = true;
+            }
+            return result;
         }
     }
 }

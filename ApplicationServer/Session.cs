@@ -28,13 +28,45 @@ namespace ExpectNet
         private ISpawnable _spawnable;
         private string _output;
         private int _timeout = 2500;
-        private Regex default_regex;
+        private int _max_timeout_times = 2;
+        private int _timeout_times = 0;
         internal Session(ISpawnable spawnable)
         {
             _spawnable = spawnable;
         }
 
         public Process Process { get { return _spawnable.Process;} }
+        public int Timeout
+        {
+
+            get { return _timeout; }
+
+
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentException("Value must be larger than zero");
+                }
+                _timeout = value;
+            }
+
+        }
+        public Regex DefCmdRegex { get; set; }
+
+        public int MaxTimeoutTimes
+        {
+            get
+            {
+                return _max_timeout_times;
+            }
+
+            set
+            {
+                _max_timeout_times = value;
+            }
+        }
+
 
         /// <summary>
         /// Restart the spawned process of the session.
@@ -46,7 +78,7 @@ namespace ExpectNet
         /// <example>
         /// result = Reset();
         /// </example>
-        public Boolean Reset()
+        public bool Reset()
         {
             var result = false;
             if (Process.HasExited)
@@ -79,6 +111,8 @@ namespace ExpectNet
             p.StartInfo.Arguments = Process.StartInfo.Arguments;
             _spawnable = new ProcessSpawnable(p);
             _spawnable.Init();
+            Console.WriteLine(String.Format("Session program {0} has restarted, and clear the previous session's buffer !BUFFER_BEGIN!{1}!BUFFER_END!", Process.StartInfo.FileName, _output));
+            _output = "";
             result = true;
             return result;
         }
@@ -97,44 +131,60 @@ namespace ExpectNet
         {
             _spawnable.Write(command);
         }
-
-        public string Send(string command, float timeout_seconds, string regex_string = null, bool needCRLF = true)
+        /// <exception cref="System.ArgumentNullException">Thrown when no default command 
+        /// regular expression or regex_string</exception>
+        /// <exception cref="System.TimeoutException">Thrown when query is not find for given
+        /// amount of time</exception>
+        public string Cmd(string command, float timeout_seconds=-1, string regex_string=null)
         {
             var result = String.Empty;
             int timeout = (int)(timeout_seconds * 1000);
-            if (needCRLF)
-            {
-                Send(command + "\n");
-            }
-            else
-            {
-                Send(command);
-            }
             Regex regex = null;
             if (String.IsNullOrEmpty(regex_string))
             {
-                regex = new Regex(@"[a-zA-Z]:[^>\n]*?>");
+                if (DefCmdRegex != null)
+                {
+                    regex = DefCmdRegex;
+                }
+                else
+                {
+                    throw new System.ArgumentNullException("No default command regular expression or regex_string!");
+                }
             }
             else
             {
                 regex = new Regex(regex_string);
             }
+            Send(command + "\n");
             try
             {
                 Expect(regex, s => { result = s; }, timeout);
             }
             catch (System.TimeoutException)
             {
-                Console.WriteLine("Timeout:" + command);
+                Console.WriteLine(String.Format("Run {0} timeout: {1}!", command, timeout));
+                _timeout_times++;
                 if (Process.HasExited)
                 {
+                    Console.WriteLine(String.Format("Session program {0} has exit at {1} with error code {1}, restart it!", Process.StartInfo.FileName, Process.ExitTime, Process.ExitCode));
                     Reset();
+                    _timeout_times = 0;
+                    String banner = ClearBuffer(2000);
+                    Console.WriteLine(String.Format("Restart session program {0} with banner:!BANNER_BEGIN!{1}!BANNER_END!", Process.StartInfo.FileName, banner));
+                }
+                else if (_timeout_times > MaxTimeoutTimes)
+                {
+                    Console.WriteLine(String.Format("Session program {0} has reached the maximum timeout times: {1}, so restart session!", Process.StartInfo.FileName, MaxTimeoutTimes));
+                    Reset();
+                    _timeout_times = 0;
+                    String banner = ClearBuffer(2000);
+                    Console.WriteLine(String.Format("Restart session program {0} with banner:!BANNER_BEGIN!{1}!BANNER_END!", Process.StartInfo.FileName, banner));
                 }
                 else
                 {
                     Send("\n");
                     String buff = ClearBuffer(5000);
-                    Console.WriteLine("Clear buffer: " + buff + "!BUFFER!");
+                    Console.WriteLine(String.Format("Session program {0} timeout {1} times, so clear buffer: !BUF_BEGIN!{2}!BUF_END!", Process.StartInfo.FileName, _timeout_times, buff));
                 }
             }
             return result;
@@ -150,21 +200,22 @@ namespace ExpectNet
         /// <param name="timeout">read time, unit: miliseconds</param>
         public string ClearBuffer(Int32 timeout)
         {
+            var result = _output;
             var tokenSource = new CancellationTokenSource();
             CancellationToken ct = tokenSource.Token;
-            _output = "";
             Task task = Task.Factory.StartNew(() =>
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    _output += _spawnable.Read();
+                    result += _spawnable.Read();
                 }
             }, ct);
             if (!task.Wait(timeout, ct))
             {
                 tokenSource.Cancel();
             }
-            return _output;
+            _output = "";
+            return result;
         }
 
         /// <summary>
@@ -220,6 +271,12 @@ namespace ExpectNet
                 {
                     _output += _spawnable.Read();
                     expectedQueryFound = matcher.IsMatch(_output);
+                    if (expectedQueryFound)
+                    {
+                        Console.WriteLine("PreMatched: " + matcher.PreMatchedString);
+                        Console.WriteLine("Matched: " + matcher.MatchedString);
+                        Console.WriteLine("PostMatched: " + matcher.PostMatchedString);
+                    }
                 }
             }, ct);
             if (task.Wait(timeout, ct))
@@ -236,48 +293,6 @@ namespace ExpectNet
         /// <summary>
         /// Timeout value in miliseconds for Expect function
         /// </summary>
-        public int Timeout
-        {
-
-            get { return _timeout; }
-
-
-            set
-            {
-                if (value <= 0)
-                {
-                    throw new ArgumentException("Value must be larger than zero");
-                }
-                _timeout = value;
-            }
-
-        }
-
-        public Regex Default_regex
-        {
-            get
-            {
-                return Default_regex1;
-            }
-
-            set
-            {
-                Default_regex1 = value;
-            }
-        }
-
-        public Regex Default_regex1
-        {
-            get
-            {
-                return default_regex;
-            }
-
-            set
-            {
-                default_regex = value;
-            }
-        }
 
         /// <summary>
         /// Waits until query is printed on session output and 

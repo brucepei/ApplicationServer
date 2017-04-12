@@ -8,5 +8,9 @@ namespace ExpectNet
     public interface IMatcher
     {
         bool IsMatch(string text);
+        string PreMatchedString { get; }
+        string MatchedString { get; }
+        string PostMatchedString { get; }
+
     }
 }
