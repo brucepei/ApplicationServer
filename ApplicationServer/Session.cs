@@ -28,7 +28,7 @@ namespace ExpectNet
         private ISpawnable _spawnable;
         private string _output;
         private int _timeout = 2500;
-
+        private Regex default_regex;
         internal Session(ISpawnable spawnable)
         {
             _spawnable = spawnable;
@@ -36,6 +36,16 @@ namespace ExpectNet
 
         public Process Process { get { return _spawnable.Process;} }
 
+        /// <summary>
+        /// Restart the spawned process of the session.
+        /// </summary>
+        /// <remarks>
+        /// if the process has already exited, it will start process only.
+        /// </remarks>
+        /// <returns>true if restart successfully, or false</returns>
+        /// <example>
+        /// result = Reset();
+        /// </example>
         public Boolean Reset()
         {
             var result = false;
@@ -88,6 +98,56 @@ namespace ExpectNet
             _spawnable.Write(command);
         }
 
+        public string Send(string command, float timeout_seconds, string regex_string = null, bool needCRLF = true)
+        {
+            var result = String.Empty;
+            int timeout = (int)(timeout_seconds * 1000);
+            if (needCRLF)
+            {
+                Send(command + "\n");
+            }
+            else
+            {
+                Send(command);
+            }
+            Regex regex = null;
+            if (String.IsNullOrEmpty(regex_string))
+            {
+                regex = new Regex(@"[a-zA-Z]:[^>\n]*?>");
+            }
+            else
+            {
+                regex = new Regex(regex_string);
+            }
+            try
+            {
+                Expect(regex, s => { result = s; }, timeout);
+            }
+            catch (System.TimeoutException)
+            {
+                Console.WriteLine("Timeout:" + command);
+                if (Process.HasExited)
+                {
+                    Reset();
+                }
+                else
+                {
+                    Send("\n");
+                    String buff = ClearBuffer(5000);
+                    Console.WriteLine("Clear buffer: " + buff + "!BUFFER!");
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Read STDOUT and STDERR with desinated time, then clear buffer
+        /// </summary>
+        /// <returns>merge STDOUT and STDERR into a string, and return it</returns>
+        /// <example>
+        /// output = ClearBuffer(5000);
+        /// </example>
+        /// <param name="timeout">read time, unit: miliseconds</param>
         public string ClearBuffer(Int32 timeout)
         {
             var tokenSource = new CancellationTokenSource();
@@ -113,6 +173,7 @@ namespace ExpectNet
         /// </summary>
         /// <param name="query">expected output</param>
         /// <param name="handler">action to be performed</param>
+        /// <param name="timeout">read time, unit: miliseconds</param>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
         public void Expect(string query, ExpectedHandler handler, Int32 timeout = 0)
@@ -190,6 +251,32 @@ namespace ExpectNet
                 _timeout = value;
             }
 
+        }
+
+        public Regex Default_regex
+        {
+            get
+            {
+                return Default_regex1;
+            }
+
+            set
+            {
+                Default_regex1 = value;
+            }
+        }
+
+        public Regex Default_regex1
+        {
+            get
+            {
+                return default_regex;
+            }
+
+            set
+            {
+                default_regex = value;
+            }
         }
 
         /// <summary>

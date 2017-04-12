@@ -17,49 +17,6 @@ namespace ApplicationServer
             Main_expect(args);
         }
 
-        static String Send(Session sess, String command, Int32 timeout_seconds, String regex_string=null, Boolean needCRLF=true)
-        {
-            var result = String.Empty;
-            timeout_seconds = timeout_seconds * 1000;
-            if (needCRLF)
-            {
-                sess.Send(command + "\n");
-            }
-            else
-            {
-                sess.Send(command);
-            }
-            Regex regex = null;
-            if (String.IsNullOrEmpty(regex_string))
-            {
-                regex = new Regex(@"[a-zA-Z]:[^>\n]*?>");
-            }
-            else
-            {
-                regex = new Regex(regex_string);
-            }
-            try
-            {
-                sess.Expect(regex, s => { result = s; }, timeout_seconds);
-            }
-            catch (System.TimeoutException)
-            {
-                Console.WriteLine("Timeout:" + command);
-                if (sess.Process.HasExited)
-                {
-                    sess.Reset();
-                }
-                else
-                {
-                    sess.Send("\n");
-                    sess.Send("\n");
-                    String buff = sess.ClearBuffer(5000);
-                    Console.WriteLine("Clear buffer: " + buff + "!BUFFER!");
-                }
-            }
-            return result;
-        }
-
         static void Main_sock(string[] args)
         {
             Logging.TurnOff = false;
@@ -100,11 +57,11 @@ namespace ApplicationServer
                 spawn = Expect.Spawn(new ProcessSpawnable("cmd.exe"));
                 string banner = spawn.ClearBuffer(1000);
                 Console.WriteLine("Cmd started with banner:\n" + banner + "!END!");
-                var result = Send(spawn, "ping 127.0.0.1 -n 3", 1);
+                var result = spawn.Send("ping 127.0.0.1 -n 3", 1);
                 Console.WriteLine("result: " + result + "!END!");
-                result = Send(spawn, "ping 127.0.0.1 -n 2", 10);
+                result = spawn.Send("ping 127.0.0.1 -n 2", 10);
                 Console.WriteLine("result: " + result + "!END!");
-                result = Send(spawn, "ping 127.0.0.1 -n 2", 1);
+                result = spawn.Send("ping 127.0.0.1 -n 2", 1);
                 Console.WriteLine("result: " + result + "!END!");
                 //spawn.Send("net user\n");
                 //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("net user found:" + s + "!"));
