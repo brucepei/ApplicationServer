@@ -43,7 +43,16 @@ namespace ExpectNet
         }
         public bool IsMatch(string text)
         {
-            return text.Contains(query);
+            var result = false;
+            var offset = text.IndexOf(query);
+            if (offset > -1)
+            {
+                preMatchedString = text.Substring(0, offset);
+                matchedString = query;
+                postMatchedString = text.Substring(offset + query.Length);
+                result = true;
+            }
+            return result;
         }
     }
 }

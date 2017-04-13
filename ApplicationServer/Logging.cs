@@ -39,11 +39,7 @@ namespace ApplicationServer
         private static void Create(string fileName)
         {
             var directoryPath = Path.GetDirectoryName(fileName);
-            if (string.IsNullOrEmpty(directoryPath))
-            {
-                throw new Exception("FileName should not be null！");
-            }
-            if (!Directory.Exists(directoryPath))
+            if (!string.IsNullOrEmpty(directoryPath) && !Directory.Exists(directoryPath))
             {
                 Directory.CreateDirectory(directoryPath);
             }

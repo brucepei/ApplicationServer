@@ -11,15 +11,21 @@ namespace ApplicationServer
     class Program
     {
         static Int32 defaultPort = 16789;
+        private static Session session;
+        public static Session Session { get { return session; } }
         static void Main(string[] args)
         {
-            Main_expect(args);
+            Logging.TurnOff = false;
+            Logging.Initialize("as.log");
+            //test_expect(args);
+            session = Expect.Spawn(new ProcessSpawnable(@"cmd.exe"), new Regex(@"[a-zA-Z]:[^>\n]*?>"));
+            string banner = session.ClearBuffer(2000);
+            Console.WriteLine("Cmd started with banner:\n" + banner + "!BANNER_END!");
+            start_as(args);
         }
 
-        static void Main_sock(string[] args)
+        static void start_as(string[] args)
         {
-            Logging.TurnOff = false;
-            Logging.Initialize("./as.log");
             Int32 port = 0;
             Boolean useUserPort = false;
             if (args.Length > 0)
@@ -49,19 +55,21 @@ namespace ApplicationServer
             appServ.Start();
         }
 
-        static void Main_expect(string[] args)
+        static void test_expect(string[] args)
         {
             try
             {
-                var sess = Expect.Spawn(new ProcessSpawnable(@"cmd.exe"), new Regex(@"[a-zA-Z]:[^>\n]*?>"));
-                string banner = sess.ClearBuffer(2000);
-                Console.WriteLine("Cmd started with banner:\n" + banner + "!BANNER_END!");
-                var result = sess.Cmd("ipconfig", 3);
-                Console.WriteLine("result: " + result + "!END!");
-                result = sess.Cmd("ping 127.0.0.1 -n 2", 4);
-                Console.WriteLine("result: " + result + "!END!");
-                result = sess.Cmd("ping 127.0.0.1 -n 4", 5);
-                Console.WriteLine("result: " + result + "!END!");
+                
+                var result = session.Cmd("ping 127.0.0.1 -n 1", 2);
+                Console.WriteLine("buffer: <!" + session.OutputBuffer + "!>");
+                Console.WriteLine("result: <!" + result + "!>");
+                result = session.Cmd("ipconfig", 4);
+                Console.WriteLine("buffer: <!" + session.OutputBuffer + "!>");
+                Console.WriteLine("result: <!" + result + "!>");
+                result = session.Cmd("ping 127.0.0.1 -n 2", 3 );
+                Console.WriteLine("buffer: <!" + session.OutputBuffer + "!>");
+                Console.WriteLine("result: <!" + result + "!>");
+                Console.WriteLine("remains: <!" + session.ClearBuffer(3000) + "!>");
                 //spawn.Send("net user\n");
                 //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("net user found:" + s + "!"));
                 //spawn.Timeout = 5000;

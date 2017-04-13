@@ -111,17 +111,25 @@ namespace ApplicationServer
             var remoteAddr = sock.RemoteEndPoint.ToString();
             try
             {
-                sock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 5000);
+                sock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000); //timeout if client idle more than...
                 length = sock.Receive(buf);
                 if (length > 0)
                 {
                     var cmd = Encoding.ASCII.GetString(buf, 0, length);
                     Logging.WriteLine(remoteAddr + ": Received:" + cmd + "!!!");
-
-                    var app = new Application(cmd);
-                    cmdResult = app.Run(60);
-                    var result = String.Format("cmd {0} done with stdout: '{1}', stderr: '{2}'!\n", cmd, cmdResult.Output, cmdResult.Error);
-                    //Logging.WriteLine(result);
+                    var result = String.Empty;
+                    var command = cmd.Trim('"').Trim();
+                    if (command.StartsWith("ia:"))
+                    {
+                        result = Program.Session.Cmd(command.Substring(3));
+                    }
+                    else
+                    {
+                        var app = new Application(cmd);
+                        cmdResult = app.Run(60);
+                        result = String.Format("cmd {0} done with stdout: '{1}', stderr: '{2}'!\n", cmd, cmdResult.Output, cmdResult.Error);
+                        //Logging.WriteLine(result);
+                    }
                     byte[] msg = Encoding.UTF8.GetBytes(result);
                     sock.Send(msg);
                 }

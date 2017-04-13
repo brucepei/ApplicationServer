@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ApplicationServer;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -26,7 +27,7 @@ namespace ExpectNet
     public class Session
     {
         private ISpawnable _spawnable;
-        private string _output;
+        private string _output_buffer;
         private int _timeout = 2500;
         private int _max_timeout_times = 5;
         private int _timeout_times = 0;
@@ -35,7 +36,7 @@ namespace ExpectNet
             _spawnable = spawnable;
         }
 
-        public Process Process { get { return _spawnable.Process;} }
+        public Process Process { get { return _spawnable.Process; } }
         public int Timeout
         {
 
@@ -53,7 +54,7 @@ namespace ExpectNet
 
         }
         public Regex DefCmdRegex { get; set; }
-
+        public string OutputBuffer { get { return _output_buffer; } }
         public int MaxTimeoutTimes
         {
             get
@@ -83,7 +84,7 @@ namespace ExpectNet
             var result = false;
             if (Process.HasExited)
             {
-                Console.WriteLine(String.Format("Session process {0} has already exited at {1} with error code {2}!", Process.StartInfo.FileName, Process.ExitTime.ToString(), Process.ExitCode));
+                Logging.WriteLine(String.Format("Session process {0} has already exited at {1} with error code {2}!", Process.StartInfo.FileName, Process.ExitTime.ToString(), Process.ExitCode));
             }
             else
             {
@@ -93,17 +94,17 @@ namespace ExpectNet
                 }
                 catch (Win32Exception wexp)
                 {
-                    Console.WriteLine(String.Format("Session process {0} failed to be killed: {1}!", Process.StartInfo.FileName, wexp));
+                    Logging.WriteLine(String.Format("Session process {0} failed to be killed: {1}!", Process.StartInfo.FileName, wexp));
                     return result;
                 }
                 catch (NotSupportedException nexp)
                 {
-                    Console.WriteLine(String.Format("Session process {0} don't support 'kill': {1}!", Process.StartInfo.FileName, nexp));
+                    Logging.WriteLine(String.Format("Session process {0} don't support 'kill': {1}!", Process.StartInfo.FileName, nexp));
                     return result;
                 }
                 catch (InvalidOperationException iexp)
                 {
-                    Console.WriteLine(String.Format("Session process {0} is not existed or already exited: {1}!", Process.StartInfo.FileName, iexp));
+                    Logging.WriteLine(String.Format("Session process {0} is not existed or already exited: {1}!", Process.StartInfo.FileName, iexp));
                 }
             }
             Process p = new Process();
@@ -111,8 +112,8 @@ namespace ExpectNet
             p.StartInfo.Arguments = Process.StartInfo.Arguments;
             _spawnable = new ProcessSpawnable(p);
             _spawnable.Init();
-            Console.WriteLine(String.Format("Session program {0} has restarted, and clear the previous session's buffer !BUFFER_BEGIN!{1}!BUFFER_END!", Process.StartInfo.FileName, _output));
-            _output = "";
+            Logging.WriteLine(String.Format("Session program {0} has restarted, and clear the previous session's buffer <#{1}#>", Process.StartInfo.FileName, _output_buffer));
+            _output_buffer = "";
             result = true;
             return result;
         }
@@ -135,7 +136,7 @@ namespace ExpectNet
         /// regular expression or regex_string</exception>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
-        public string Cmd(string command, float timeout_seconds=-1, string regex_string=null)
+        public string Cmd(string command, double timeout_seconds=-1, string regex_string=null)
         {
             var result = String.Empty;
             int timeout = (int)(timeout_seconds * 1000);
@@ -156,23 +157,24 @@ namespace ExpectNet
                 regex = new Regex(regex_string);
             }
             Send(command + "\n");
+            Logging.WriteLine(String.Format("Send command: <#{0}#>", command));
             try
             {
                 Expect(regex, s => { result = s; }, timeout);
             }
             catch (System.TimeoutException)
             {
-                Console.WriteLine(String.Format("Run {0} timeout: {1}!", command, timeout));
+                Logging.WriteLine(String.Format("Run command <#{0}#> <#{1}#>ms timeout with result=<#{2}#>", command, timeout, result));
                 _timeout_times++;
                 var need_reset = false;
                 if (Process.HasExited)
                 {
-                    Console.WriteLine(String.Format("Session program {0} has exit at {1} with error code {1}, restart it!", Process.StartInfo.FileName, Process.ExitTime, Process.ExitCode));
+                    Logging.WriteLine(String.Format("Session program {0} has exit at {1} with error code {1}, restart it!", Process.StartInfo.FileName, Process.ExitTime, Process.ExitCode));
                     need_reset = true;
                 }
                 else if (_timeout_times > MaxTimeoutTimes)
                 {
-                    Console.WriteLine(String.Format("Session program {0} has reached the maximum timeout times: {1}, so restart session!", Process.StartInfo.FileName, MaxTimeoutTimes));
+                    Logging.WriteLine(String.Format("Session program {0} has reached the maximum timeout times: {1}, so restart session!", Process.StartInfo.FileName, MaxTimeoutTimes));
                     need_reset = true;
                 }
                 if (need_reset)
@@ -180,7 +182,7 @@ namespace ExpectNet
                     Reset();
                     _timeout_times = 0;
                     String banner = ClearBuffer(2000);
-                    Console.WriteLine(String.Format("Restart session program {0} with banner:!BANNER_BEGIN!{1}!BANNER_END!", Process.StartInfo.FileName, banner));
+                    Logging.WriteLine(String.Format("Restart session program {0} with banner:!BANNER_BEGIN!{1}!BANNER_END!", Process.StartInfo.FileName, banner));
                 }
             }
             return result;
@@ -196,7 +198,7 @@ namespace ExpectNet
         /// <param name="timeout">read time, unit: miliseconds</param>
         public string ClearBuffer(Int32 timeout)
         {
-            var result = _output;
+            var result = _output_buffer;
             var tokenSource = new CancellationTokenSource();
             CancellationToken ct = tokenSource.Token;
             Task task = Task.Factory.StartNew(() =>
@@ -210,7 +212,7 @@ namespace ExpectNet
             {
                 tokenSource.Cancel();
             }
-            _output = "";
+            _output_buffer = "";
             return result;
         }
 
@@ -259,25 +261,38 @@ namespace ExpectNet
                 timeout = _timeout;
             }
             CancellationToken ct = tokenSource.Token;
-            _output = "";
+            //_output_buffer = ""; //lpei: no need to clear buffer, the prevous buffer + new output
+            var read_buffer = _output_buffer;
             bool expectedQueryFound = false;
             Task task = Task.Factory.StartNew(() =>
             {
                 while (!ct.IsCancellationRequested && !expectedQueryFound)
                 {
-                    _output += _spawnable.Read();
-                    expectedQueryFound = matcher.IsMatch(_output);
+                    read_buffer += _spawnable.Read();
+                    expectedQueryFound = matcher.IsMatch(read_buffer);
                     if (expectedQueryFound)
                     {
-                        Console.WriteLine("PreMatched: " + matcher.PreMatchedString);
-                        Console.WriteLine("Matched: " + matcher.MatchedString);
-                        Console.WriteLine("PostMatched: " + matcher.PostMatchedString);
+                        Logging.WriteLine(String.Format("PreMatched: <#{0}#>", matcher.PreMatchedString));
+                        Logging.WriteLine(String.Format("Matched: <#{0}#>", matcher.MatchedString));
+                        Logging.WriteLine(String.Format("PostMatched: <#{0}#>", matcher.PostMatchedString));
+                        read_buffer = matcher.PreMatchedString + matcher.MatchedString;
+                        _output_buffer = matcher.PostMatchedString;
                     }
                 }
             }, ct);
             if (task.Wait(timeout, ct))
             {
-                handler(_output);
+                if (expectedQueryFound)
+                {
+                    Logging.WriteLine("Found expected output=PreMatched+Matched!");
+                    handler(read_buffer);
+                }
+                else
+                {
+                    Logging.WriteLine(String.Format("Not found expected output from: <#{0}#>!", read_buffer));
+                    _output_buffer = read_buffer;
+                    handler("");
+                } 
             }
             else
             {
@@ -334,7 +349,7 @@ namespace ExpectNet
             {
                 timeoutTask = Task.Delay(_timeout);
             }
-            _output = "";
+            _output_buffer = "";
             bool expectedQueryFound = false;
             while (!expectedQueryFound)
             {
@@ -348,11 +363,11 @@ namespace ExpectNet
                 Task any = await Task.WhenAny(tasks).ConfigureAwait(false);
                 if (task == any)
                 {
-                    _output += await task.ConfigureAwait(false);
-                    expectedQueryFound = matcher.IsMatch(_output);
+                    _output_buffer += await task.ConfigureAwait(false);
+                    expectedQueryFound = matcher.IsMatch(_output_buffer);
                     if (expectedQueryFound)
                     {
-                        handler(_output);
+                        handler(_output_buffer);
                     }
                 }
                 else
