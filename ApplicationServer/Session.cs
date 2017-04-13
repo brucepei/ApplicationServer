@@ -28,7 +28,7 @@ namespace ExpectNet
         private ISpawnable _spawnable;
         private string _output;
         private int _timeout = 2500;
-        private int _max_timeout_times = 2;
+        private int _max_timeout_times = 5;
         private int _timeout_times = 0;
         internal Session(ISpawnable spawnable)
         {
@@ -164,27 +164,23 @@ namespace ExpectNet
             {
                 Console.WriteLine(String.Format("Run {0} timeout: {1}!", command, timeout));
                 _timeout_times++;
+                var need_reset = false;
                 if (Process.HasExited)
                 {
                     Console.WriteLine(String.Format("Session program {0} has exit at {1} with error code {1}, restart it!", Process.StartInfo.FileName, Process.ExitTime, Process.ExitCode));
-                    Reset();
-                    _timeout_times = 0;
-                    String banner = ClearBuffer(2000);
-                    Console.WriteLine(String.Format("Restart session program {0} with banner:!BANNER_BEGIN!{1}!BANNER_END!", Process.StartInfo.FileName, banner));
+                    need_reset = true;
                 }
                 else if (_timeout_times > MaxTimeoutTimes)
                 {
                     Console.WriteLine(String.Format("Session program {0} has reached the maximum timeout times: {1}, so restart session!", Process.StartInfo.FileName, MaxTimeoutTimes));
+                    need_reset = true;
+                }
+                if (need_reset)
+                {
                     Reset();
                     _timeout_times = 0;
                     String banner = ClearBuffer(2000);
                     Console.WriteLine(String.Format("Restart session program {0} with banner:!BANNER_BEGIN!{1}!BANNER_END!", Process.StartInfo.FileName, banner));
-                }
-                else
-                {
-                    Send("\n");
-                    String buff = ClearBuffer(5000);
-                    Console.WriteLine(String.Format("Session program {0} timeout {1} times, so clear buffer: !BUF_BEGIN!{2}!BUF_END!", Process.StartInfo.FileName, _timeout_times, buff));
                 }
             }
             return result;

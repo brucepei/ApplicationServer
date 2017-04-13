@@ -53,14 +53,14 @@ namespace ApplicationServer
         {
             try
             {
-                var sess = Expect.Spawn(new ProcessSpawnable("cmd.exe"), new Regex(@"[a-zA-Z]:[^>\n]*?>"));
-                string banner = sess.ClearBuffer(1000);
+                var sess = Expect.Spawn(new ProcessSpawnable(@"cmd.exe"), new Regex(@"[a-zA-Z]:[^>\n]*?>"));
+                string banner = sess.ClearBuffer(2000);
                 Console.WriteLine("Cmd started with banner:\n" + banner + "!BANNER_END!");
-                var result = sess.Cmd("ping 127.0.0.1 -n 3", 4);
+                var result = sess.Cmd("ipconfig", 3);
                 Console.WriteLine("result: " + result + "!END!");
-                result = sess.Cmd("ping 127.0.0.1 -n 2", 1);
+                result = sess.Cmd("ping 127.0.0.1 -n 2", 4);
                 Console.WriteLine("result: " + result + "!END!");
-                result = sess.Cmd("ping 127.0.0.1 -n 4", 1);
+                result = sess.Cmd("ping 127.0.0.1 -n 4", 5);
                 Console.WriteLine("result: " + result + "!END!");
                 //spawn.Send("net user\n");
                 //spawn.Expect(new Regex(@"[a-zA-Z]:[^>\n]*?>"), s => Console.WriteLine("net user found:" + s + "!"));
