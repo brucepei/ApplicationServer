@@ -118,7 +118,7 @@ namespace ApplicationServer
                     var cmd = Encoding.ASCII.GetString(buf, 0, length);
                     Logging.WriteLine(remoteAddr + ": Received:" + cmd + "!!!");
                     var result = String.Empty;
-                    var command = cmd.Trim('"').Trim();
+                    var command = cmd.Trim().Trim('"').Trim();
                     var regex = new System.Text.RegularExpressions.Regex(@"ia:(\d*):(.*?):(.+)");
                     var match = regex.Match(command);
                     if (match.Success)

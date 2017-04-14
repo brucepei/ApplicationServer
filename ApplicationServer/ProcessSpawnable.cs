@@ -29,8 +29,8 @@ namespace ExpectNet
             Process p = new Process();
             p.StartInfo.FileName = filename;
             p.StartInfo.Arguments = arguments;
-            p.StartInfo.StandardErrorEncoding = Encoding.UTF8;
-            p.StartInfo.StandardErrorEncoding = Encoding.UTF8;
+            p.StartInfo.StandardErrorEncoding = Encoding.Unicode;
+            p.StartInfo.StandardErrorEncoding = Encoding.Unicode;
             _process = new ProcessAdapter(p);
         }
 

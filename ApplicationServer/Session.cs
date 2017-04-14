@@ -155,6 +155,7 @@ namespace ExpectNet
             else
             {
                 regex = new Regex(regex_string);
+                Logging.WriteLine(String.Format("Using user regex {0}", regex.ToString()));
             }
             Send(command + "\n");
             Logging.WriteLine(String.Format("Send command: <#{0}#>", command));
@@ -268,7 +269,25 @@ namespace ExpectNet
             {
                 while (!ct.IsCancellationRequested && !expectedQueryFound)
                 {
-                    read_buffer += _spawnable.Read();
+                    var perRead = _spawnable.Read();
+                    var bytes = Encoding.UTF8.GetBytes(perRead);
+                    byte[] new_bytes = new byte[bytes.Length];
+                    Logging.WriteLine(String.Format("Raw read bytes: {0}", bytes));
+                    var i = 0;
+                    Logging.WriteLine(String.Format("Raw read: {0}", perRead));
+                    foreach (var b in bytes)
+                    {
+                        if (b != 0)
+                        {
+                            new_bytes[i] = b;
+                            i++;
+                        }
+                    }
+
+                    perRead = Encoding.UTF8.GetString(new_bytes, 0, i);
+                    Logging.WriteLine(String.Format("Modified read bytes: {0}", new_bytes));
+                    Logging.WriteLine(String.Format("Modified read: {0}", perRead));
+                    read_buffer += perRead;
                     expectedQueryFound = matcher.IsMatch(read_buffer);
                     if (expectedQueryFound)
                     {
@@ -276,6 +295,7 @@ namespace ExpectNet
                         Logging.WriteLine(String.Format("Matched: <#{0}#>", matcher.MatchedString));
                         Logging.WriteLine(String.Format("PostMatched: <#{0}#>", matcher.PostMatchedString));
                         read_buffer = matcher.PreMatchedString + matcher.MatchedString;
+                        
                         _output_buffer = matcher.PostMatchedString;
                     }
                 }
