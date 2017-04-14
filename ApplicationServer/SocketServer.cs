@@ -119,9 +119,15 @@ namespace ApplicationServer
                     Logging.WriteLine(remoteAddr + ": Received:" + cmd + "!!!");
                     var result = String.Empty;
                     var command = cmd.Trim('"').Trim();
-                    if (command.StartsWith("ia:"))
+                    var regex = new System.Text.RegularExpressions.Regex(@"ia:(\d*):(.*?):(.+)");
+                    var match = regex.Match(command);
+                    if (match.Success)
                     {
-                        result = Program.Session.Cmd(command.Substring(3));
+                        int timeout = 0;
+                        Int32.TryParse(match.Groups[1].Value, out timeout);
+                        var expect_str = match.Groups[2].Value;
+                        command = match.Groups[3].Value;
+                        result = Program.Session.Cmd(command, timeout, expect_str);
                     }
                     else
                     {

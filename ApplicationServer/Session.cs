@@ -136,7 +136,7 @@ namespace ExpectNet
         /// regular expression or regex_string</exception>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
-        public string Cmd(string command, double timeout_seconds=-1, string regex_string=null)
+        public string Cmd(string command, double timeout_seconds=0, string regex_string=null)
         {
             var result = String.Empty;
             int timeout = (int)(timeout_seconds * 1000);
