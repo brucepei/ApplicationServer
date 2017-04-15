@@ -97,6 +97,19 @@ namespace ApplicationServer
             Write(content, Environment.NewLine);
         }
 
+        public static void WriteLine(string content, params object[] holes)
+        {
+            if (turnOff)
+            {
+                return;
+            }
+            if (holes.Length > 0)
+            {
+                content = String.Format(content, holes);
+            }
+            Write(content, Environment.NewLine);
+        }
+
         public static void Write(string content)
         {
             if (turnOff)

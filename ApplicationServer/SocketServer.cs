@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Net;
 using System.Threading.Tasks;
+using CommandProtocol;
 
 namespace ApplicationServer
 {
@@ -118,23 +119,33 @@ namespace ApplicationServer
                     var cmd = Encoding.ASCII.GetString(buf, 0, length);
                     Logging.WriteLine(remoteAddr + ": Received:" + cmd + "!!!");
                     var result = String.Empty;
-                    var command = cmd.Trim().Trim('"').Trim();
-                    var regex = new System.Text.RegularExpressions.Regex(@"ia:(\d*):(.*?):(.+)");
-                    var match = regex.Match(command);
-                    if (match.Success)
+                    RunProgramCommand cmd_rc = RunProgramCommand.TryJson(cmd);
+                    if (cmd_rc != null)
                     {
-                        int timeout = 0;
-                        Int32.TryParse(match.Groups[1].Value, out timeout);
-                        var expect_str = match.Groups[2].Value;
-                        command = match.Groups[3].Value;
-                        result = Program.Session.Cmd(command, timeout, expect_str);
+                        var app = new Application(cmd_rc.Command);
+                        cmdResult = app.Run(cmd_rc.Timeout);
+                        result = String.Format("RunProgramCommand {0} done with stdout: '{1}', stderr: '{2}'!\n", cmd_rc.Command, cmdResult.Output, cmdResult.Error);
                     }
                     else
                     {
-                        var app = new Application(cmd);
-                        cmdResult = app.Run(60);
-                        result = String.Format("cmd {0} done with stdout: '{1}', stderr: '{2}'!\n", cmd, cmdResult.Output, cmdResult.Error);
-                        //Logging.WriteLine(result);
+                        var command = cmd.Trim().Trim('"').Trim();
+                        var regex = new System.Text.RegularExpressions.Regex(@"ia:(\d*):(.*?):(.+)");
+                        var match = regex.Match(command);
+                        if (match.Success)
+                        {
+                            int timeout = 0;
+                            Int32.TryParse(match.Groups[1].Value, out timeout);
+                            var expect_str = match.Groups[2].Value;
+                            command = match.Groups[3].Value;
+                            result = Program.Session.Cmd(command, timeout, expect_str);
+                        }
+                        else
+                        {
+                            var app = new Application(cmd);
+                            cmdResult = app.Run(60);
+                            result = String.Format("cmd {0} done with stdout: '{1}', stderr: '{2}'!\n", cmd, cmdResult.Output, cmdResult.Error);
+                            //Logging.WriteLine(result);
+                        }
                     }
                     byte[] msg = Encoding.UTF8.GetBytes(result);
                     sock.Send(msg);
