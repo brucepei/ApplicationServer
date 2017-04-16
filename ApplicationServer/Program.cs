@@ -18,7 +18,7 @@ namespace ApplicationServer
             Logging.TurnOff = false;
             Logging.Initialize("as.log");
             //test_expect(args);
-            session = Expect.Spawn(new ProcessSpawnable(@"cmd.exe"), new Regex(@"[a-zA-Z]:[^>\n]*?>"));
+            session = Expect.Spawn(new ProcessSpawnable(@"p2papplication.exe"), new Regex(@"[a-zA-Z]:[^>\n]*?>"));
             string banner = session.ClearBuffer(2000);
             Console.WriteLine("Cmd started with banner:\n" + banner + "!BANNER_END!");
             Console.WriteLine(String.Format("encode type={0}", Console.OutputEncoding.CodePage));

@@ -37,16 +37,24 @@ namespace ApplicationClient
                 }
                 //var jc = new ExpectOutputCommand("dir c:", @"[a-zA-Z]:\.*?>", 5000);
                 var command = String.Join(" ", args, 1, args.Length - 1);
-                var jc = JsonCommand.RunProgram(command, 3000);
-                //var jc = JsonCommand.ExpectOutput(command, @"[a-zA-Z]:\\.*?>", 6000);
+                //var jc = JsonCommand.RunProgram(command, 3000);
+                var jc = JsonCommand.ExpectOutput(command, @"\n>", 6000);
 
                 var json_result = ConnectAS(ip, port, JSON.Stringify(jc), jc.Timeout + 10000);
                 var result = JSON.Parse<JsonCommand>(json_result);
                 if (result != null)
                 {
-                    Console.WriteLine(String.Format("Output: {0}", result.Output));
-                    Console.WriteLine(String.Format("Error: {0}", result.Error));
-                    Console.WriteLine(String.Format("ExitCode: {0}", result.ExitCode));
+                    if (jc.Type == CommandType.RunProgram)
+                    {
+                        Console.WriteLine(String.Format("Output: {0}", result.Output));
+                        Console.WriteLine(String.Format("Error: {0}", result.Error));
+                        Console.WriteLine(String.Format("ExitCode: {0}", result.ExitCode));
+                    }
+                    else if (jc.Type == CommandType.ExpectOutput)
+                    {
+                        Console.WriteLine(String.Format("Output: {0}", result.Output));
+                        Console.WriteLine(String.Format("Expectation: {0}", result.Exception));
+                    }
                 }
             }
             else
