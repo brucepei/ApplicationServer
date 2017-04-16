@@ -142,7 +142,7 @@ namespace ExpectNet
             var t = Task.Run(async () => { return await ReadAsync().ConfigureAwait(false); });
             string result = t.Result;
             var bytes = Encoding.UTF8.GetBytes(result);
-            Logging.WriteLine("Raw read: <#{0}#>", result);
+            //Logging.WriteLine("Raw read: <#{0}#>", result);
             byte[] new_bytes = new byte[bytes.Length];
             var i = 0;
             foreach (var b in bytes)
@@ -157,7 +157,7 @@ namespace ExpectNet
             {
                 result = Encoding.UTF8.GetString(new_bytes, 0, i);
                 Logging.WriteLine("Raw read bytes: {0}", BitConverter.ToString(bytes));
-                Logging.WriteLine("Modified read bytes: {0}", BitConverter.ToString(bytes));
+                Logging.WriteLine("Modified read bytes: {0}", BitConverter.ToString(new_bytes, 0, i));
                 Logging.WriteLine(String.Format("Modified read: <#{0}#>", result));
             }
             return result;
