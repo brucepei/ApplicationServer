@@ -136,10 +136,9 @@ namespace ExpectNet
         /// regular expression or regex_string</exception>
         /// <exception cref="System.TimeoutException">Thrown when query is not find for given
         /// amount of time</exception>
-        public string Cmd(string command, double timeout_seconds=0, string regex_string=null)
+        public string Cmd(string command, int timeout=0, string regex_string=null)
         {
             var result = String.Empty;
-            int timeout = (int)(timeout_seconds * 1000);
             Regex regex = null;
             if (String.IsNullOrEmpty(regex_string))
             {
@@ -184,6 +183,11 @@ namespace ExpectNet
                     _timeout_times = 0;
                     String banner = ClearBuffer(2000);
                     Logging.WriteLine(String.Format("Restart session program {0} with banner:!BANNER_BEGIN!{1}!BANNER_END!", Process.StartInfo.FileName, banner));
+                    throw new System.TimeoutException(String.Format("Send command {0} but timeout, restart expect process {1}!", command, Process.StartInfo.FileName));
+                }
+                else
+                {
+                    throw new System.TimeoutException(String.Format("Send command {0} but timeout {1} for {2} times!", command, timeout, _timeout_times));
                 }
             }
             return result;
@@ -269,25 +273,7 @@ namespace ExpectNet
             {
                 while (!ct.IsCancellationRequested && !expectedQueryFound)
                 {
-                    var perRead = _spawnable.Read();
-                    var bytes = Encoding.UTF8.GetBytes(perRead);
-                    byte[] new_bytes = new byte[bytes.Length];
-                    Logging.WriteLine(String.Format("Raw read bytes: {0}", bytes));
-                    var i = 0;
-                    Logging.WriteLine(String.Format("Raw read: {0}", perRead));
-                    foreach (var b in bytes)
-                    {
-                        if (b != 0)
-                        {
-                            new_bytes[i] = b;
-                            i++;
-                        }
-                    }
-
-                    perRead = Encoding.UTF8.GetString(new_bytes, 0, i);
-                    Logging.WriteLine(String.Format("Modified read bytes: {0}", new_bytes));
-                    Logging.WriteLine(String.Format("Modified read: {0}", perRead));
-                    read_buffer += perRead;
+                    read_buffer += _spawnable.Read();
                     expectedQueryFound = matcher.IsMatch(read_buffer);
                     if (expectedQueryFound)
                     {

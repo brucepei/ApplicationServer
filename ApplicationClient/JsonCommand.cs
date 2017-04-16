@@ -16,108 +16,117 @@ namespace CommandProtocol
         ExpectOutput,
     }
 
-    [DataContract]
-    abstract class BaseCommand : IJsonCommand
+    static class JSON
     {
-        public BaseCommand(CommandType type, string command, int timeout)
+        public static string Stringify(object obj)
+        {
+            string result = null;
+            MemoryStream ms = null;
+            try
+            {
+                ms = new MemoryStream();
+                DataContractJsonSerializer js = new DataContractJsonSerializer(obj.GetType());
+                js.WriteObject(ms, obj);
+                //ms.Position = 0;
+                //StreamReader sr = new StreamReader(ms, Encoding.UTF8);
+                //result = sr.ReadToEnd();
+                result = Encoding.UTF8.GetString(ms.ToArray());
+                Logging.WriteLine("{0} convert to Json: {1}", obj.GetType().FullName, result);
+            }
+            catch (Exception ex)
+            {
+                Logging.WriteLine("{0} failed to convert to Json: {1}", obj.GetType().FullName, ex.Message);
+            }
+            finally
+            {
+                if (ms != null)
+                {
+                    ms.Close();
+                }
+            }
+            return result;
+        }
+
+        public static T Parse<T>(string json)
+        {
+            T result = default(T);
+            MemoryStream ms = null;
+            try
+            {
+                ms = new MemoryStream(Encoding.Unicode.GetBytes(json));
+                DataContractJsonSerializer deseralizer = new DataContractJsonSerializer(typeof(T));
+                result = (T)deseralizer.ReadObject(ms);
+                Logging.WriteLine("Parsed {0} from Json: {1}", typeof(T).FullName, result);
+            }
+            catch (Exception ex)
+            {
+                Logging.WriteLine("Failed to parse {0} from Json '{1}': {2}", typeof(T).FullName, json, ex.Message);
+            }
+            finally
+            {
+                if (ms != null)
+                {
+                    ms.Close();
+                }
+            }
+            return result;
+        }
+    }
+
+    [DataContract]
+    class JsonCommand : IRunProgramCommand, IExpectOutputCommand
+    {
+        private JsonCommand(CommandType type, string command, int timeout)
         {
             ID = autoIncreasedId++;
+            Version = version;
             Type = type;
             Command = command;
             Timeout = timeout;
         }
+
+        public static JsonCommand RunProgram(string command, int timeout)
+        {
+            var jc = new JsonCommand(CommandType.RunProgram, command, timeout);
+            return jc;
+        }
+
+        public static JsonCommand ExpectOutput(string command, string regex_string, int timeout)
+        {
+            var jc = new JsonCommand(CommandType.ExpectOutput, command, timeout);
+            jc.RegexString = regex_string;
+            return jc;
+        }
+
+        static string version = "1.0";
         private int autoIncreasedId = 1;
         [DataMember]
         public int ID { get; set; }
+        [DataMember]
+        public string Version { get; set; }
 
         [DataMember]
         public CommandType Type { get; set; }
-
         [DataMember]
         public string Command { get; set; }
-
-        [DataMember]
-        public string Exception { get; set; }
-
         [DataMember]
         public int Timeout { get; set; }
-
-        abstract public string Output { get; set; }
-
-        public string ToJson()
-        {
-            string result = null;
-            DataContractJsonSerializer js = new DataContractJsonSerializer(this.GetType());
-            MemoryStream mem_fs = new MemoryStream();
-            js.WriteObject(mem_fs, this);
-            mem_fs.Position = 0;
-            StreamReader sr = new StreamReader(mem_fs, Encoding.UTF8);
-            result = sr.ReadToEnd();
-            sr.Close();
-            mem_fs.Close();
-            return result;
-        }
-
-        public override string ToString()
-        {
-            return String.Format("ID={0}, Type={1}, Command={2}, Timeout={3}, Output={4}, Exception={5}", ID, Type, Command, Timeout, Output, Exception);
-        }
-    }
-
-    [DataContract]
-    class RunProgramCommand : BaseCommand
-    {
-        public RunProgramCommand(string command, int timeout)
-            : base(CommandType.RunProgram, command, timeout)
-        {
-        }
-        [DataMember]
-        public override string Output { get; set; }
-
-        [DataMember]
-        public string Error { get; set; }
-
-        [DataMember]
-        public int ExitCode { get; set; }
-
-        static public RunProgramCommand TryJson(string json)
-        {
-            RunProgramCommand result = null;
-            using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(json)))
-            {
-                DataContractJsonSerializer deseralizer = new DataContractJsonSerializer(typeof(RunProgramCommand));
-                result = (RunProgramCommand)deseralizer.ReadObject(ms);
-                Logging.WriteLine("Parsed RunProgramCommand Json: {0}", result);
-            }
-            return result;
-        }
-    }
-
-    [DataContract]
-    class ExpectOutputCommand : BaseCommand
-    {
-        public ExpectOutputCommand(string command, string regex_string, int timeout)
-            : base(CommandType.ExpectOutput, command, timeout)
-        {
-            RegexString = regex_string;
-        }
-
-        [DataMember]
-        public override string Output { get; set; }
-
         [DataMember]
         public string RegexString { get; set; }
 
-        static public ExpectOutputCommand TryJson(string json)
+        [DataMember]
+        public string Output { get; set; }
+        [DataMember]
+        public string Error { get; set; }
+        [DataMember]
+        public string Exception { get; set; }
+        [DataMember]
+        public int ExitCode { get; set; }
+
+        public override string ToString()
         {
-            ExpectOutputCommand result = null;
-            using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(json)))
-            {
-                DataContractJsonSerializer deseralizer = new DataContractJsonSerializer(typeof(ExpectOutputCommand));
-                result = (ExpectOutputCommand)deseralizer.ReadObject(ms);
-                Logging.WriteLine("Parsed ExpectOutputCommand Json: {0}", result);
-            }
-            return result;
+            return String.Format("Version={0}, ID={1}, Type={2}, Command={3}, Timeout={4}, Output={5}, Exception={6}", Version, ID, Type, Command, Timeout, Output, Exception);
         }
+
     }
 }

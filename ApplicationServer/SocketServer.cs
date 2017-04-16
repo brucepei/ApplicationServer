@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Net;
 using System.Threading.Tasks;
-using CommandProtocol;
+using AS.CommandProtocol;
 
 namespace ApplicationServer
 {
@@ -106,7 +106,7 @@ namespace ApplicationServer
 
         public CommandResult ReceiveCommand(Socket sock)
         {
-            CommandResult cmdResult = new CommandResult(null, null);
+            CommandResult cmdResult = new CommandResult(null, null, -1);
             byte[] buf = new byte[4096];
             int length = -1;
             var remoteAddr = sock.RemoteEndPoint.ToString();
@@ -119,12 +119,31 @@ namespace ApplicationServer
                     var cmd = Encoding.ASCII.GetString(buf, 0, length);
                     Logging.WriteLine(remoteAddr + ": Received:" + cmd + "!!!");
                     var result = String.Empty;
-                    RunProgramCommand cmd_rc = RunProgramCommand.TryJson(cmd);
+                    JsonCommand cmd_rc = JSON.Parse<JsonCommand>(cmd);
                     if (cmd_rc != null)
                     {
-                        var app = new Application(cmd_rc.Command);
-                        cmdResult = app.Run(cmd_rc.Timeout);
-                        result = String.Format("RunProgramCommand {0} done with stdout: '{1}', stderr: '{2}'!\n", cmd_rc.Command, cmdResult.Output, cmdResult.Error);
+                        if (cmd_rc.Type == CommandType.RunProgram)
+                        {
+                            var app = new Application(cmd_rc.Command);
+                            cmdResult = app.Run(cmd_rc.Timeout);
+                            cmd_rc.Output = cmdResult.Output;
+                            cmd_rc.Error = cmdResult.Error;
+                            cmd_rc.ExitCode = cmdResult.ExitCode;
+                            result = JSON.Stringify(cmd_rc);
+                        }
+                        else if (cmd_rc.Type == CommandType.ExpectOutput)
+                        {
+                            try
+                            {
+                                cmd_rc.Output = Program.Session.Cmd(cmd_rc.Command, cmd_rc.Timeout, cmd_rc.RegexString);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logging.WriteLine("Run ExpectOutput {0} with exception: {1}", cmd_rc.Command, ex.Message);
+                                cmd_rc.Exception = ex.Message;
+                            }
+                            result = JSON.Stringify(cmd_rc);
+                        }
                     }
                     else
                     {

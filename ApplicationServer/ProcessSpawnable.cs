@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ApplicationServer;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -139,7 +140,27 @@ namespace ExpectNet
         public string Read()
         {
             var t = Task.Run(async () => { return await ReadAsync().ConfigureAwait(false); });
-            return t.Result;
+            string result = t.Result;
+            var bytes = Encoding.UTF8.GetBytes(result);
+            Logging.WriteLine("Raw read: <#{0}#>", result);
+            byte[] new_bytes = new byte[bytes.Length];
+            var i = 0;
+            foreach (var b in bytes)
+            {
+                if (b != 0)
+                {
+                    new_bytes[i] = b;
+                    i++;
+                }
+            }
+            if (i != bytes.Length)
+            {
+                result = Encoding.UTF8.GetString(new_bytes, 0, i);
+                Logging.WriteLine("Raw read bytes: {0}", BitConverter.ToString(bytes));
+                Logging.WriteLine("Modified read bytes: {0}", BitConverter.ToString(bytes));
+                Logging.WriteLine(String.Format("Modified read: <#{0}#>", result));
+            }
+            return result;
 
         }
 

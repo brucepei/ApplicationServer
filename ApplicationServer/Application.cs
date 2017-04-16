@@ -11,13 +11,15 @@ namespace ApplicationServer
 {
     public struct CommandResult
     {
-        public CommandResult(String o, String e)
+        public CommandResult(string o, string e, int exit_code)
         {
             Output = o;
             Error = e;
+            ExitCode = exit_code;
         }
-        public String Output;
-        public String Error;
+        public string Output;
+        public string Error;
+        public int ExitCode;
     }
 
     class Application
@@ -221,7 +223,7 @@ namespace ApplicationServer
             {
                 Logging.WriteLine("Failed to capture App's output and error: " + ex.InnerException.Message);
             }
-            return new CommandResult(output, error);
+            return new CommandResult(output, error, p.ExitCode);
         }
 
         public String ReadProcessOutput(Process p)
