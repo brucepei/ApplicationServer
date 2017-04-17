@@ -124,12 +124,20 @@ namespace ApplicationServer
                     {
                         if (cmd_rc.Type == CommandType.RunProgram)
                         {
-                            var app = new Application(cmd_rc.Command);
-                            cmdResult = app.Run(cmd_rc.Timeout);
-                            cmd_rc.Output = cmdResult.Output;
-                            cmd_rc.Error = cmdResult.Error;
-                            cmd_rc.ExitCode = cmdResult.ExitCode;
-                            result = JSON.Stringify(cmd_rc);
+                            try
+                            {
+                                var app = new Application(cmd_rc.Command);
+                                cmdResult = app.Run(cmd_rc.Timeout);
+                                cmd_rc.Output = cmdResult.Output;
+                                cmd_rc.Error = cmdResult.Error;
+                                cmd_rc.ExitCode = cmdResult.ExitCode;
+                                result = JSON.Stringify(cmd_rc);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logging.WriteLine("Run RunProgram {0} with exception: {1}", cmd_rc.Command, ex.Message);
+                                cmd_rc.Exception = ex.Message;
+                            }
                         }
                         else if (cmd_rc.Type == CommandType.ExpectOutput)
                         {
@@ -140,6 +148,19 @@ namespace ApplicationServer
                             catch (Exception ex)
                             {
                                 Logging.WriteLine("Run ExpectOutput {0} with exception: {1}", cmd_rc.Command, ex.Message);
+                                cmd_rc.Exception = ex.Message;
+                            }
+                            result = JSON.Stringify(cmd_rc);
+                        }
+                        else if (cmd_rc.Type == CommandType.ClearExpectBuffer)
+                        {
+                            try
+                            {
+                                cmd_rc.Output = Program.Session.ClearBuffer(cmd_rc.Timeout);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logging.WriteLine("Run ClearExpectBuffer {0} with exception: {1}", cmd_rc.Command, ex.Message);
                                 cmd_rc.Exception = ex.Message;
                             }
                             result = JSON.Stringify(cmd_rc);

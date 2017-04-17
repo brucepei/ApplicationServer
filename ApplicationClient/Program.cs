@@ -16,15 +16,17 @@ namespace ApplicationClient
     class Program
     {
         const int Default_AS_Port = 8080;
+        const float Default_ReceiveCommand_Seconds = 5.0f;
         const int SendCommand_Timeout = 5000;
         private static byte[] result = new byte[1024];
         static void Main(string[] args)
         {
             Logging.TurnOff = false;
             Logging.Initialize("ac.log");
-
+            
             int port = Default_AS_Port;
-            if (args.Length >= 2)
+            Arguments command_line = new Arguments(args);
+            if (args.Length >= 3 && (command_line["t"] == "2" || command_line["c"] != null))
             {
                 var ip_port_tuple = args[0].Split(new char[] { ':' }, 2);
                 var ip = ip_port_tuple[0];
@@ -35,12 +37,37 @@ namespace ApplicationClient
                         Logging.WriteLine("Cannot parse port string {0}", ip_port_tuple[1]);
                     }
                 }
-                //var jc = new ExpectOutputCommand("dir c:", @"[a-zA-Z]:\.*?>", 5000);
-                var command = String.Join(" ", args, 1, args.Length - 1);
-                //var jc = JsonCommand.RunProgram(command, 3000);
-                var jc = JsonCommand.ExpectOutput(command, @"\n>", 6000);
+                JsonCommand jc = null;
+                float timeout = 0f;
+                if (Single.TryParse(command_line["d"], out timeout))
+                {
+                    timeout *= 1000;
+                }
+                else
+                {
+                    timeout = Default_ReceiveCommand_Seconds * 1000;
+                    Logging.WriteLine("Cannot get valid timeout, using default time: {0} milliseconds", timeout);
+                }
+                if (command_line["t"]  == null || command_line["t"] == "0")
+                {
+                    jc = JsonCommand.RunProgram(command_line["c"], (int)timeout);
+                }
+                else if (command_line["t"] == "1")
+                {
+                    var regex_string = command_line["e"];
+                    if (regex_string == null)
+                    {
+                        regex_string = @"\n>";
+                        //regex_string = @"[a-zA-Z]:\\[^\n>]*?>";
+                    }
+                    jc = JsonCommand.ExpectOutput(command_line["c"], regex_string, (int)timeout);
+                }
+                else if (command_line["t"] == "2")
+                {
+                    jc = JsonCommand.ClearExpectBuffer((int)timeout);
+                }
 
-                var json_result = ConnectAS(ip, port, JSON.Stringify(jc), jc.Timeout + 10000);
+                var json_result = ConnectAS(ip, port, JSON.Stringify(jc), jc.Timeout + 5000); //need wait more time since transmitting will cost some time
                 var result = JSON.Parse<JsonCommand>(json_result);
                 if (result != null)
                 {
@@ -59,7 +86,7 @@ namespace ApplicationClient
             }
             else
             {
-                Logging.WriteLine("Wrong arguments! Usage: ac 127.0.0.1:8080 dir!");
+                Logging.WriteLine("Wrong arguments! Usage: ac 127.0.0.1:8080 -t 0 -d 5 -c \"net user\"!");
             }
         }
 

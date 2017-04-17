@@ -14,6 +14,7 @@ namespace AS.CommandProtocol
     {
         RunProgram,
         ExpectOutput,
+        ClearExpectBuffer,
     }
 
     static class JSON
@@ -95,6 +96,12 @@ namespace AS.CommandProtocol
         {
             var jc = new JsonCommand(CommandType.ExpectOutput, command, timeout);
             jc.RegexString = regex_string;
+            return jc;
+        }
+
+        public static JsonCommand ClearExpectBuffer(int timeout)
+        {
+            var jc = new JsonCommand(CommandType.ClearExpectBuffer, "", timeout);
             return jc;
         }
 
