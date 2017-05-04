@@ -26,7 +26,7 @@ namespace ApplicationClient
             
             int port = Default_AS_Port;
             Arguments command_line = new Arguments(args);
-            if (args.Length >= 3 && (command_line["t"] == "2" || command_line["c"] != null))
+            if (args.Length >= 3 && (command_line["t"] == "2" || command_line["t"] == "3" || command_line["c"] != null))
             {
                 var ip_port_tuple = args[0].Split(new char[] { ':' }, 2);
                 var ip = ip_port_tuple[0];
@@ -66,7 +66,10 @@ namespace ApplicationClient
                 {
                     jc = JsonCommand.ClearExpectBuffer((int)timeout);
                 }
-
+                else if (command_line["t"] == "3")
+                {
+                    jc = JsonCommand.ResetExpectSession((int)timeout);
+                }
                 var json_result = ConnectAS(ip, port, JSON.Stringify(jc), jc.Timeout + 5000); //need wait more time since transmitting will cost some time
                 var result = JSON.Parse<JsonCommand>(json_result);
                 if (result != null)

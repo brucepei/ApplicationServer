@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Net;
 using System.Threading.Tasks;
-using AS.CommandProtocol;
+using CommandProtocol;
 
 namespace ApplicationServer
 {
@@ -44,6 +44,7 @@ namespace ApplicationServer
             try
             {
                 socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.ReuseAddress, true);
+                socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.IpTimeToLive, 128);
                 socket.Bind(ip_port_entry);
             }
             catch (SocketException se)
@@ -57,6 +58,7 @@ namespace ApplicationServer
             socket.Listen(10000);
             new Task(() => CheckClients()).Start();
             Logging.WriteLine("Waiting for connection at port:" + listenPort);
+            Logging.WriteLine("Get Socket server ttl = {0}", socket.Ttl);
             while (true)
             {
                 Socket clientSocket = socket.Accept();
@@ -157,6 +159,26 @@ namespace ApplicationServer
                             try
                             {
                                 cmd_rc.Output = Program.Session.ClearBuffer(cmd_rc.Timeout);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logging.WriteLine("Run ClearExpectBuffer {0} with exception: {1}", cmd_rc.Command, ex.Message);
+                                cmd_rc.Exception = ex.Message;
+                            }
+                            result = JSON.Stringify(cmd_rc);
+                        }
+                        else if (cmd_rc.Type == CommandType.ResetExpectSession)
+                        {
+                            try
+                            {
+                                if (Program.Session.Reset())
+                                {
+                                    cmd_rc.Output = Program.Session.ClearBuffer(cmd_rc.Timeout);
+                                }
+                                else
+                                {
+                                    cmd_rc.Exception = "Failed to reset process with unknown reason";
+                                }
                             }
                             catch (Exception ex)
                             {

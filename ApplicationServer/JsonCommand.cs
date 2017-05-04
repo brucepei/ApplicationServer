@@ -8,13 +8,14 @@ using System.IO;
 using System.Runtime.Serialization.Json;
 using ApplicationServer;
 
-namespace AS.CommandProtocol
+namespace CommandProtocol
 {
     public enum CommandType
     {
         RunProgram,
         ExpectOutput,
         ClearExpectBuffer,
+        ResetExpectSession,
     }
 
     static class JSON
@@ -102,6 +103,12 @@ namespace AS.CommandProtocol
         public static JsonCommand ClearExpectBuffer(int timeout)
         {
             var jc = new JsonCommand(CommandType.ClearExpectBuffer, "", timeout);
+            return jc;
+        }
+
+        public static JsonCommand ResetExpectSession(int timeout)
+        {
+            var jc = new JsonCommand(CommandType.ResetExpectSession, "", timeout);
             return jc;
         }
 
