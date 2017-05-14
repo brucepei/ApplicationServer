@@ -66,7 +66,14 @@ namespace ApplicationServer
                 Logging.WriteLine("Client connected:" + client_ip_port);
                 var task = new Task<CommandResult>(sock=>ReceiveCommand((Socket)sock), clientSocket);
                 task.Start();
-                clients.Add(client_ip_port, new Client(client_ip_port, clientSocket, task));
+                if (clients.ContainsKey(client_ip_port))
+                {
+                    clients[client_ip_port] = new Client(client_ip_port, clientSocket, task);
+                }
+                else
+                {
+                    clients.Add(client_ip_port, new Client(client_ip_port, clientSocket, task));
+                }
             }
         }
 

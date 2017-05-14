@@ -76,7 +76,7 @@ namespace ApplicationServer
                     }
                     catch (Exception)
                     {
-                        while (!lockDic.ContainsKey(len))
+                        if (lockDic.ContainsKey(len))
                         {
                             len += lockDic[len];
                         }
