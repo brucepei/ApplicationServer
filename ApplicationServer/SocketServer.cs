@@ -152,7 +152,9 @@ namespace ApplicationServer
                         {
                             try
                             {
-                                cmd_rc.Output = Program.Session.Cmd(cmd_rc.Command, cmd_rc.Timeout, cmd_rc.RegexString);
+                                var expect_type = (int)cmd_rc.ExpectType;
+                                Logging.WriteLine("Run ExpectOutput with type: {0}", expect_type);
+                                cmd_rc.Output = Program.Sessions[expect_type].Cmd(cmd_rc.Command, cmd_rc.Timeout, cmd_rc.RegexString);
                             }
                             catch (Exception ex)
                             {
@@ -165,7 +167,9 @@ namespace ApplicationServer
                         {
                             try
                             {
-                                cmd_rc.Output = Program.Session.ClearBuffer(cmd_rc.Timeout);
+                                var expect_type = (int)cmd_rc.ExpectType;
+                                Logging.WriteLine("Run ClearExpectBuffer with type: {0}", expect_type);
+                                cmd_rc.Output = Program.Sessions[expect_type].ClearBuffer(cmd_rc.Timeout);
                             }
                             catch (Exception ex)
                             {
@@ -178,9 +182,11 @@ namespace ApplicationServer
                         {
                             try
                             {
-                                if (Program.Session.Reset())
+                                var expect_type = (int)cmd_rc.ExpectType;
+                                Logging.WriteLine("Run ResetExpectSession with type: {0}", expect_type);
+                                if (Program.Sessions[expect_type].Reset())
                                 {
-                                    cmd_rc.Output = Program.Session.ClearBuffer(cmd_rc.Timeout);
+                                    cmd_rc.Output = Program.Sessions[expect_type].ClearBuffer(cmd_rc.Timeout);
                                 }
                                 else
                                 {
@@ -206,7 +212,7 @@ namespace ApplicationServer
                             Int32.TryParse(match.Groups[1].Value, out timeout);
                             var expect_str = match.Groups[2].Value;
                             command = match.Groups[3].Value;
-                            result = Program.Session.Cmd(command, timeout, expect_str);
+                            result = Program.Sessions[0].Cmd(command, timeout, expect_str);
                         }
                         else
                         {

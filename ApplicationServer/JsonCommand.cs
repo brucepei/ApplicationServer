@@ -18,6 +18,12 @@ namespace CommandProtocol
         ResetExpectSession,
     }
 
+    public enum ExpectType
+    {
+        P2P,
+        SAP,
+    }
+
     static class JSON
     {
         public static string Stringify(object obj)
@@ -93,22 +99,25 @@ namespace CommandProtocol
             return jc;
         }
 
-        public static JsonCommand ExpectOutput(string command, string regex_string, int timeout)
+        public static JsonCommand ExpectOutput(string command, string regex_string, int timeout, ExpectType expect_type=ExpectType.P2P)
         {
             var jc = new JsonCommand(CommandType.ExpectOutput, command, timeout);
             jc.RegexString = regex_string;
+            jc.ExpectType = expect_type;
             return jc;
         }
 
-        public static JsonCommand ClearExpectBuffer(int timeout)
+        public static JsonCommand ClearExpectBuffer(int timeout, ExpectType expect_type = ExpectType.P2P)
         {
             var jc = new JsonCommand(CommandType.ClearExpectBuffer, "", timeout);
+            jc.ExpectType = expect_type;
             return jc;
         }
 
-        public static JsonCommand ResetExpectSession(int timeout)
+        public static JsonCommand ResetExpectSession(int timeout, ExpectType expect_type = ExpectType.P2P)
         {
             var jc = new JsonCommand(CommandType.ResetExpectSession, "", timeout);
+            jc.ExpectType = expect_type;
             return jc;
         }
 
@@ -127,6 +136,8 @@ namespace CommandProtocol
         public int Timeout { get; set; }
         [DataMember]
         public string RegexString { get; set; }
+        [DataMember]
+        public ExpectType ExpectType { get; set; }
 
         [DataMember]
         public string Output { get; set; }
@@ -139,7 +150,7 @@ namespace CommandProtocol
 
         public override string ToString()
         {
-            return String.Format("Version={0}, ID={1}, Type={2}, Command={3}, Timeout={4}, Output={5}, Exception={6}", Version, ID, Type, Command, Timeout, Output, Exception);
+            return String.Format("Version={0}, ID={1}, Type={2}, Command={3}, Timeout={4}, Output={5}, ExpectName={6}, Exception={7}", Version, ID, Type, Command, Timeout, Output, ExpectType, Exception);
         }
 
     }
