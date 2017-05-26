@@ -70,6 +70,18 @@ namespace ApplicationClient
                 {
                     jc = JsonCommand.ResetExpectSession((int)timeout);
                 }
+                int expect_type = 0;
+                if (command_line["e"] != null)
+                {
+                    if (Int32.TryParse(command_line["e"], out expect_type))
+                    {
+                        jc.ExpectType = (ExpectType)expect_type;
+                    }
+                    else
+                    {
+                        Console.WriteLine(String.Format("Cannot support ExpectType: {0}", command_line["e"]));
+                    }
+                }
                 var json_result = ConnectAS(ip, port, JSON.Stringify(jc), jc.Timeout + 5000); //need wait more time since transmitting will cost some time
                 var result = JSON.Parse<JsonCommand>(json_result);
                 if (result != null)
