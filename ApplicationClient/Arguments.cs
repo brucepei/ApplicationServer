@@ -20,10 +20,11 @@ namespace ApplicationClient
         public Arguments(string[] Args)
         {
             Parameters = new StringDictionary();
-            Regex Spliter = new Regex(@"^-{1,2}|^/|=|:",
+            //Regex Spliter = new Regex(@"^-{1,2}|^/|=|:",  no need to support: type=3, type:3, to avoid arugments like: -regex "a=\w+"
+            Regex Spliter = new Regex(@"^-{1,2}",
                 RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-            Regex Remover = new Regex(@"^['""]?(.*?)['""]?$",
+            Regex Remover = new Regex(@"^(['""]?)(.*?)\1$",
                 RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
             string Parameter = null;
@@ -50,7 +51,7 @@ namespace ApplicationClient
                             if (!Parameters.ContainsKey(Parameter))
                             {
                                 Parts[0] =
-                                    Remover.Replace(Parts[0], "$1");
+                                    Remover.Replace(Parts[0], "$2");
 
                                 Parameters.Add(Parameter, Parts[0]);
                             }
@@ -86,7 +87,7 @@ namespace ApplicationClient
                         // Remove possible enclosing characters (",')
                         if (!Parameters.ContainsKey(Parameter))
                         {
-                            Parts[2] = Remover.Replace(Parts[2], "$1");
+                            Parts[2] = Remover.Replace(Parts[2], "$2");
                             Parameters.Add(Parameter, Parts[2]);
                         }
 
