@@ -17,26 +17,55 @@ namespace ApplicationServer
         //public static Session Session { get { return session; } }
         static void Main(string[] args)
         {
-            Logging.TurnOff = false;
-            Logging.Initialize("as.log");
-            //test_expect(args); new Regex(@"[a-zA-Z]:[^>\n]*?>")));
-            sessions = new List<Session>();
-            var expect_programs = new List<Dictionary<string, string>>
+            try
             {
-                new Dictionary<string, string> { {"program", @"P2PApplication.exe" }, {"expect", @"\n>"}, },
-                new Dictionary<string, string> { {"program", @"WiFiDirectLegacyAPDemo.exe" }, {"expect", @"\n>"}, },
-            };
-            foreach (var run_program in expect_programs)
-            {
-                var expect_program = run_program["program"];
-                var expect_regex = new Regex(run_program["expect"]);
-                var sess = Expect.Spawn(new ProcessSpawnable(expect_program), expect_regex);
-                sessions.Add(sess);
-                string banner = sess.ClearBuffer(2000);
-                Console.WriteLine("Cmd started with banner:\n" + banner + "!BANNER_END!");
-                Console.WriteLine(String.Format("encode type={0}", Console.OutputEncoding.CodePage));
+                Logging.TurnOff = false;
+                Logging.Initialize("as.log");
+                //test_expect(args); new Regex(@"[a-zA-Z]:[^>\n]*?>")));
+                Boolean expectP2P = true;
+                Boolean expectSAP = true;
+                if (args.Length > 0)
+                {
+                    if (args[0] == "--no_p2p")
+                    {
+                        expectP2P = false;
+                    }
+                    else if (args[0] == "--no_sap")
+                    {
+                        expectSAP = false;
+                    }
+                    else if (args[0] == "--no_all")
+                    {
+                        expectP2P = false;
+                        expectSAP = false;
+                    }
+                }
+                sessions = new List<Session>();
+                var expect_programs = new List<Dictionary<string, string>>();
+                if (expectP2P)
+                {
+                    expect_programs.Add(new Dictionary<string, string> { { "program", @"P2PApplication.exe" }, { "expect", @"\n>" }, });
+                }
+                if (expectSAP)
+                {
+                    expect_programs.Add(new Dictionary<string, string> { { "program", @"WiFiDirectLegacyAPDemo.exe" }, { "expect", @"\n>" }, });
+                }
+                foreach (var run_program in expect_programs)
+                {
+                    var expect_program = run_program["program"];
+                    var expect_regex = new Regex(run_program["expect"]);
+                    var sess = Expect.Spawn(new ProcessSpawnable(expect_program), expect_regex);
+                    sessions.Add(sess);
+                    string banner = sess.ClearBuffer(2000);
+                    Console.WriteLine("Cmd started with banner:\n" + banner + "!BANNER_END!");
+                    Console.WriteLine(String.Format("encode type={0}", Console.OutputEncoding.CodePage));
+                }
+                start_as(args);
             }
-            start_as(args);
+            catch(Exception err)
+            {
+                Logging.WriteLine(String.Format("%Fatal error%: as exception occurred: {0}", err));
+            }
         }
 
         static void start_as(string[] args)
